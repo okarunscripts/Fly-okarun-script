@@ -1,0 +1,11 @@
+app = "okarun-scripts-delta"
+
+# Use Dockerfile in the repo to build the image
+[build]
+  image = "Dockerfile"
+
+[env]
+  WELCOME = "okarun scripts"
+
+# Optional: set a primary region
+# primary_region = "iad"
