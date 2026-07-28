@@ -1,4 +1,4 @@
-app = "okarun-scripts-delta"
+app = "roblox-delta"
 
 # Use Dockerfile in the repo to build the image
 [build]
