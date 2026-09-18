@@ -1,1 +1,196 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
+local player = Players.LocalPlayer
+local flying = false
+local speed = 60
+
+local character
+local root
+local humanoid
+local velocity
+local flyConnection
+
+local function getCharacter()
+	character = player.Character or player.CharacterAdded:Wait()
+	root = character:WaitForChild("HumanoidRootPart")
+	humanoid = character:WaitForChild("Humanoid")
+	return character
+end
+
+getCharacter()
+
+player.CharacterAdded:Connect(function()
+	flying = false
+	getCharacter()
+end)
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "MobileFlyGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local flyButton = Instance.new("TextButton")
+flyButton.Size = UDim2.fromOffset(120, 55)
+flyButton.Position = UDim2.new(1, -140, 1, -100)
+flyButton.BackgroundTransparency = 0.2
+flyButton.Text = "FLY"
+flyButton.TextScaled = true
+flyButton.TextColor3 = Color3.new(1, 1, 1)
+flyButton.Parent = gui
+
+-- Mobile movement values
+local moveDirection = Vector3.zero
+local up = false
+local down = false
+
+-- Simple mobile directional buttons
+local function makeButton(text, position)
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.fromOffset(55, 55)
+	button.Position = position
+	button.BackgroundTransparency = 0.25
+	button.Text = text
+	button.TextScaled = true
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Parent = gui
+	return button
+end
+
+local forward = makeButton("▲", UDim2.new(0, 70, 1, -190))
+local backward = makeButton("▼", UDim2.new(0, 70, 1, -70))
+local left = makeButton("◀", UDim2.new(0, 10, 1, -130))
+local right = makeButton("▶", UDim2.new(0, 130, 1, -130))
+local ascend = makeButton("UP", UDim2.new(1, -140, 1, -170))
+local descend = makeButton("DOWN", UDim2.new(1, -140, 1, -230))
+
+local function holdButton(button, callback)
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			callback(true)
+		end
+	end)
+
+	button.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			callback(false)
+		end
+	end)
+end
+
+holdButton(forward, function(value)
+	if value then
+		moveDirection += Vector3.new(0, 0, -1)
+	else
+		moveDirection -= Vector3.new(0, 0, -1)
+	end
+end)
+
+holdButton(backward, function(value)
+	if value then
+		moveDirection += Vector3.new(0, 0, 1)
+	else
+		moveDirection -= Vector3.new(0, 0, 1)
+	end
+end)
+
+holdButton(left, function(value)
+	if value then
+		moveDirection += Vector3.new(-1, 0, 0)
+	else
+		moveDirection -= Vector3.new(-1, 0, 0)
+	end
+end)
+
+holdButton(right, function(value)
+	if value then
+		moveDirection += Vector3.new(1, 0, 0)
+	else
+		moveDirection -= Vector3.new(1, 0, 0)
+	end
+end)
+
+holdButton(ascend, function(value)
+	up = value
+end)
+
+holdButton(descend, function(value)
+	down = value
+end)
+
+local function stopFlying()
+	flying = false
+
+	if flyConnection then
+		flyConnection:Disconnect()
+		flyConnection = nil
+	end
+
+	if velocity then
+		velocity:Destroy()
+		velocity = nil
+	end
+
+	if humanoid then
+		humanoid.PlatformStand = false
+	end
+
+	flyButton.Text = "FLY"
+end
+
+local function toggleFly()
+	getCharacter()
+
+	flying = not flying
+
+	if not flying then
+		stopFlying()
+		return
+	end
+
+	humanoid.PlatformStand = true
+
+	velocity = Instance.new("BodyVelocity")
+	velocity.Name = "MobileFlyVelocity"
+	velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	velocity.Velocity = Vector3.zero
+	velocity.Parent = root
+
+	flyButton.Text = "STOP"
+
+	flyConnection = RunService.RenderStepped:Connect(function()
+		if not flying or not root.Parent then
+			stopFlying()
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+		local direction = Vector3.zero
+
+		if moveDirection.Magnitude > 0 then
+			local cameraForward = camera.CFrame.LookVector
+			local cameraRight = camera.CFrame.RightVector
+
+			direction =
+				cameraRight * moveDirection.X +
+				cameraForward * -moveDirection.Z
+		end
+
+		if up then
+			direction += Vector3.yAxis
+		end
+
+		if down then
+			direction -= Vector3.yAxis
+		end
+
+		if direction.Magnitude > 0 then
+			velocity.Velocity = direction.Unit * speed
+		else
+			velocity.Velocity = Vector3.zero
+		end
+	end)
+end
+
+flyButton.Activated:Connect(toggleFly)
