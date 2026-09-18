@@ -1,0 +1,75 @@
+-- Simple Fly Script
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local flying = false
+local speed = 60
+
+local function getCharacter()
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+local function toggleFly()
+    local character = getCharacter()
+    local root = character:WaitForChild("HumanoidRootPart")
+    local humanoid = character:WaitForChild("Humanoid")
+
+    flying = not flying
+
+    if flying then
+        humanoid.PlatformStand = true
+
+        local velocity = Instance.new("BodyVelocity")
+        velocity.Name = "FlyVelocity"
+        velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        velocity.Velocity = Vector3.zero
+        velocity.Parent = root
+
+        local connection
+        connection = RunService.RenderStepped:Connect(function()
+            if not flying or not root.Parent then
+                connection:Disconnect()
+                velocity:Destroy()
+                humanoid.PlatformStand = false
+                return
+            end
+
+            local camera = workspace.CurrentCamera
+            local direction = Vector3.zero
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then
+                direction += camera.CFrame.LookVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then
+                direction -= camera.CFrame.LookVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then
+                direction -= camera.CFrame.RightVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then
+                direction += camera.CFrame.RightVector
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then
+                direction += Vector3.yAxis
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                direction -= Vector3.yAxis
+            end
+
+            velocity.Velocity =
+                direction.Magnitude > 0
+                and direction.Unit * speed
+                or Vector3.zero
+        end)
+    end
+end
+
+UIS.InputBegan:Connect(function(input, processed)
+    if processed then return end
+
+    if input.KeyCode == Enum.KeyCode.F then
+        toggleFly()
+    end
+end)
